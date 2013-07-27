@@ -1,0 +1,231 @@
+%
+% NOTE -- ONLY EDIT MPINet.Rnw!!!
+% MPINet.tex file will get overwritten.
+%
+%\VignetteIndexEntry{MPINet Overview}
+%\VignetteKeywords{pathway}
+%\VignettePackage{MPINet}
+%\VignetteDepends{BiasedUrn,mgcv}
+
+\documentclass[10pt]{article}
+
+\usepackage{hyperref}
+\usepackage[pdftex]{graphicx}
+\SweaveOpts{keep.source=TRUE,eps=FALSE,pdf=TRUE,prefix=FALSE} 
+\author{Yanjun Xu, Chunquan Li and Xia Li}
+
+\textwidth=6.2in
+\textheight=8.5in
+%\parskip=.3cm
+\oddsidemargin=.1in
+\evensidemargin=.1in
+\headheight=-.3in
+
+\newcommand{\xiaowuhao}{\fontsize{9pt}{\baselineskip}\selectfont}
+\newcommand{\liuhao}{\fontsize{7.875pt}{\baselineskip}\selectfont}
+\newcommand{\qihao}{\fontsize{5.25pt}{\baselineskip}\selectfont}
+
+\newcommand\Rpackage[1]{{\textsf{#1}\index{#1 (package)}}}
+\newcommand\RpackageNoindex[1]{{\textsf{#1}}}
+\newcommand\Rclass[1]{{\textit{#1}\index{#1 (class)}}}
+\newcommand\Rfunction[1]{{{\small\texttt{#1}}\index{#1 (function)}}}
+\newcommand\Rmethod[1]{{\small\texttt{#1}}}
+\newcommand\Rcommand[1]{{{\small\texttt{#1}}\index{#1 (function)}}}
+\newcommand\Rfunarg[1]{{\small\texttt{#1}}}
+\newcommand\Robject[1]{{\small\texttt{#1}}}
+\bibliographystyle{plainnat}
+
+\begin{document}
+\setkeys{Gin}{width=1.0\textwidth}
+\title{How To Use MPINet}
+\maketitle
+\tableofcontents
+
+\section{Overview}
+This vignette demonstrates how to easily use the \Rpackage{MPINet} package. This package can identify pathways 
+related with studied conditon (e.g. dysregulated pathways related with a specific disease) via global weighted 
+human metabolite network, which considers both the global non-equivalence of metabolites in pathway and the bias 
+existing in metabonomic experiment technology.
+<<echo=FALSE>>=
+library(MPINet)
+@ 
+
+
+\section{Identifying biological pathways via global weighted human metabolite network}
+The section introduces our pathway analysis based on metabolite set via global weighted human metabolite network for 
+identifying biological pathways associated with studied condition. MPINet uses a network-based approach to identify 
+pathways by considering both the global non-equivalence of metabolites in pathway and the bias existing in metabonomic 
+experiment technology. Firstly, we construct a global edge weighted human metabolite network. We calculate the strength 
+of connection value between each metabolite pair in the network. Then, we evaluate the CGNB score of each metabolite in 
+pathway(see the section \ref{getScore}). Finally, the scores are used to calculate pathway weight which is used in the 
+Wallenius' noncentral hypergeometric test to evaluate the significance of the pathway by using the function \Rfunction{identifypathway}(see the section \ref{getpathway}).
+
+
+\subsection{Calculating the CGNB scores of metabolites in pathway}\label{getScore}
+The the monotonic spline model was used to evaluate the score values of metabolites by integrating the 
+global non-equivalence scores and the initial bias scores of metabolites. The function \Rfunction{getPSS} can 
+calculate the CGNB score values of metabolites based on the inputting interest metabolites. The following commands 
+can calculate the CGNB score.
+
+<<>>= 
+#example 1
+##########get example data
+risk<-GetExampleData(dataset="prostate")
+
+###########calculate the CGNB score
+pss<-getPSS(risk ,plot=F)
+CGNBscore<-pss[,"CGNB"]
+names(CGNBscore)<-rownames(pss)
+##########print the CGNB score of some metabolites to screen
+head(CGNBscore)
+
+#example 2
+#get example data from file
+risk<-read.table(paste(system.file(package="MPINet"),"/localdata/prostate.txt",sep=""),
+header=F,sep="\t","\"")
+
+####convert the data to a character vector
+risk<-as.character(risk[[1]])
+
+###########calculate the CGNB score
+pss<-getPSS(risk ,plot=F)
+CGNBscore<-pss[,"CGNB"]
+names(CGNBscore)<-rownames(pss)
+##########print the CGNB score of some metabolites to screen
+head(CGNBscore)
+@
+
+
+\subsection{Identifying pathways related with studied condition}\label{getpathway}
+
+The function \Rfunction{identifypathway} can identify pathways associated with studied condition. The result is a list. 
+(i)If the argument \Rfunarg{method} is 'MPINet', it includes the following elements: 'pathwayName', 'annComponentList',
+ 'annComponentNumber', 'annBgComponentList', 'annBgNumber', 'componentNumber', 'bgNumber', 'pvalue', 'fdr', 'InWeight',
+ 'weight', 'anncompinNetworkNum', 'anncompinNetworkList', 'riskcompinNetworkNum', 'riskcompinNetworkList'. They correspond 
+to pathway name, the submitted metabolites annotated to a pathway, numbers of submitted metabolites annotated to a pathway, 
+the background metabolites annotated to a pathway, numbers of background metabolites annotated to a pathway, numbers of 
+submitted metabolites, numbers of background metabolitess, p-value of the Wallenius' noncentral hypergeometric test, 
+Benjamini-Hochberg fdr values, the mean score value of metabolites in pathway, the final weight of pathway, numbers of the submitted 
+metabolites annotated to a pathway and in the global human metabolite network, the submitted metabolites annotated to a pathway 
+and in the global human metabolite network, numbers of submitted metabolites in the global human metabolite network, submitted 
+metabolites in the global human metabolite network. When the argument \Rfunarg{pathType} is 'KEGG', the 'pathwayId' element is also 
+included, which is the pathway identifier in KEGG. When the argument \Rfunarg{pathType} is not 'KEGG', the 'pathsource' element is 
+also included, which stands for the source of pathway. (ii)If the argument \Rfunarg{method} is 'Hyper', it includes the same elements as (i), 
+but not includes the following elements: 'InWeight', 'weight', 'anncompinNetworkNum', 'anncompinNetworkList', 'riskcompinNetworkNum', 'riskcompinNetworkList'.
+To save the results, the \Robject{list} can be converted to the \Robject{data.frame} by the function \Rfunction{printGraph}(see the section \ref{printresult}).
+
+<<>>=
+#example 1
+#### get the metastatic prostate cancer interesting metabolite data set
+risk<-GetExampleData(dataset="prostate")
+#### integrate the non-equivalence of metabolites and the character of 
+#### differential metabolites by the monotonic spline model 
+pss<-getPSS(risk,plot=F)        
+
+#identify dysregulated pathways
+anncpdpre<-identifypathway(risk,pss,pathType="KEGG",method="MPINet",annlim=1,bglim=6)
+#convert ann to data.frame
+result<-printGraph(anncpdpre,pathType="KEGG",method="MPINet")
+head(result)
+
+
+#example 2
+########get example data from file
+risk<-read.table(paste(system.file(package="MPINet"),"/localdata/prostate.txt",sep=""),
+header=F,sep="\t","\"") 
+
+####convert the data to a character vector
+risk<-as.character(risk[[1]])
+pss<-getPSS(risk,plot=F)  
+
+#identify dysregulated pathways
+anncpdpre<-identifypathway(risk,pss,pathType="KEGG",method="MPINet",annlim=1,bglim=6)
+#convert ann to data.frame
+result<-printGraph(anncpdpre,pathType="KEGG",method="MPINet")
+head(result)
+
+#example 3
+#### get the metastatic prostate cancer interesting metabolite data set
+risk<-GetExampleData(dataset="prostate") 
+pss<-getPSS(risk,plot=F)  
+
+#identify dysregulated Reactome and KEGG pathways
+anncpdpre<-identifypathway(risk,pss,pathType=c("KEGG","Reactome"),
+                method="MPINet",annlim=1,bglim=6)
+#convert ann to data.frame
+result<-printGraph(anncpdpre,pathType=c("KEGG","Reactome"),method="MPINet")
+head(result)
+@ 
+
+
+
+
+\subsection{Print the results of annotation and identification}\label{printresult}
+The function \Rfunction{printGraph} can convert the result list of the function \Rfunction{identifypathway} to the \Robject{data.frame}.
+A \Robject{data.frame} of the identification results. (i)If the argument \Rfunarg{method} is 'MPINet', it includes the following 
+elements: 'pathwayName', 'annComponentRatio', 'annBgRatio', 'weight', 'pvalue', 'fdr', 'annComponentList', 'annBgComponentList', 
+'annComponentinNetRatio', 'anncompinNetworkList', 'riskcompinNetworkList'. The 'annComponentRatio' is the ratio of 
+the annotated metabolites. For example, 30/1000 means that 30 metabolites in 1000 interesting metabolites are annotated 
+to this pathway. The 'annBgRatio' is the ratio of background metabolites. For example, 10/4994 means that 10 of the 4994 background metabolites are annotated to this pathway. 
+ The 'annComponentinNetRatio' indicates the ratio of annotated metabolites in the global human metabolite network. The 'annComponentList' and 'annBgComponentList' 
+are the annotated metabolites and the annotated background metabolites. The 'anncompinNetworkList' and 'riskcompinNetworkList' are 
+the annotated metabolites in network and the interesting metabolites in network. (ii)If the argument \Rfunarg{method} 
+is 'Hyper', it includes the following elements: 'pathwayName', 'annComponentRatio', 'annBgRatio', 'pvalue', 'fdr', 'annComponentList', 'annBgComponentList'.
+ When the argument \Rfunarg{pathType} is 'KEGG', the 'pathwayID' is included. When the  the argument \Rfunarg{pathType} is not 'KEGG', the 'pathsource' is included. 
+Detailed information is provided in the function \Rfunction{identifypathway}. The following commands 
+use the function \Rfunction{printGraph} to convert the result to \Robject{data.frame}.
+
+<<>>=
+#example 1
+#### get the metastatic prostate cancer interesting metabolite data set
+risk<-GetExampleData(dataset="prostate")
+#### integrate the global non-equivalence of metabolites and the character of 
+####differential metabolites by the monotonic spline model 
+pss<-getPSS(risk,plot=F)        
+
+#identify dysregulated pathways
+anncpdpre<-identifypathway(risk,pss,pathType="KEGG",method="MPINet",annlim=1,bglim=6)
+#convert ann to data.frame
+result<-printGraph(anncpdpre,pathType="KEGG",method="MPINet")
+#print part of the results to screen
+head(result)
+result1<-printGraph(anncpdpre,pathType="KEGG",method="MPINet",detail=TRUE)
+
+
+#example 2
+#### get the metastatic prostate cancer interesting metabolite data set
+risk<-GetExampleData(dataset="prostate") 
+
+pss<-getPSS(risk,plot=F)
+
+#identify dysregulated pathways
+anncpdpre<-identifypathway(risk,pss,pathType="Reactome",method="MPINet",annlim=1,bglim=6)
+#convert ann to data.frame
+result<-printGraph(anncpdpre,pathType="Reactome",method="MPINet")
+#print part of the results to screen
+head(result)
+
+result1<-printGraph(anncpdpre,pathType="Reactome",method="MPINet",detail=TRUE)
+@ 
+
+
+
+
+
+\newpage
+\section{Session Info}
+The script runs within the following session:
+<<sessionInfo, echo=FALSE, results=verbatim>>=
+sessionInfo()
+@
+
+\begin{thebibliography}{}
+
+\bibitem[Li {\it et~al}., 2009]{Li2009} Li, C., et al. (2009) Subpathwayminer: A Software Package for Flexible Identification of Pathways. Nucleic Acids Res, 37, e131.
+
+\bibitem[Young {\it et~al}., 2005]{Young2008} Young, M.D., Wakefield, M.J., Smyth, G.K. and Oshlack, A. (2010) Gene ontology analysis for RNA-seq: accounting for selection bias. Genome Biol, 11, R14.
+
+
+\end{thebibliography}
+
+\end{document}
